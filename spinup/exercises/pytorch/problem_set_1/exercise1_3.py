@@ -209,8 +209,8 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #   YOUR CODE HERE    #
         #                     #
         #######################
-        q1 = ac.q1(o2,a)
-        q2 = ac.q2(o2,a)
+        q1 = ac.q1(o,a)
+        q2 = ac.q2(o,a)
 
         # Target policy smoothing
         #######################
@@ -219,13 +219,17 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #                     #
         #######################
         action_noise  = torch.randn(*(ac_targ.pi(o2).shape))*target_noise
-        if action_noise<-noise_clip:
-            action_noise = -noise_clip
-        elif action_noise>noise_clip:
-            action_noise = noise_clip
+        action_noise= torch.clamp(action_noise,-noise_clip,noise_clip)
+        # if action_noise[0]<-noise_clip[0]:
+        #     action_noise = -noise_clip
+        # elif action_noise>noise_clip:
+        #     action_noise = noise_clip
         clip_action = action_noise+ac_targ.pi(o2)
-        if clip_action>act_limit:
-            clip_action = act_limit
+        action_noise= torch.clamp(clip_action,-act_limit,act_limit)
+        # if clip_action>act_limit:
+        #     clip_action = act_limit
+        # elif clip_action<-act_limit:
+        #     clip_action = -act_limit
 
         # Target Q-values
         #######################
@@ -233,7 +237,7 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #   YOUR CODE HERE    #
         #                     #
         #######################
-        y = r+gamma*(1-d)*min(ac_targ.q1(o2,clip_action),ac_targ.q2(o2,clip_action))
+        y = r+gamma*(1-d)*torch.min(ac_targ.q1(o2,clip_action),ac_targ.q2(o2,clip_action))
 
         # MSE loss against Bellman backup
         #######################
@@ -259,7 +263,7 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #                     #
         #######################
         o, a, r, o2, d = data['obs'], data['act'], data['rew'], data['obs2'], data['done']
-        loss_pi = (ac.q1(o,ac.pi(o))).mean()
+        loss_pi = -(ac.q1(o,ac.pi(o))).mean()
         return loss_pi
 
     #=========================================================================#
