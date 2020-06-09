@@ -4,6 +4,8 @@ from spinup import ddpg_pytorch as ddpg
 import numpy as np
 import torch
 import torch.nn as nn
+import pybulletgym
+
 
 """
 

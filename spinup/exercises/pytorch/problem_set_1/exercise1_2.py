@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from spinup.exercises.pytorch.problem_set_1 import exercise1_1
 from spinup.exercises.pytorch.problem_set_1 import exercise1_2_auxiliary
+import pybulletgym
 
 """
 
@@ -38,7 +39,14 @@ def mlp(sizes, activation, output_activation=nn.Identity):
     #   YOUR CODE HERE    #
     #                     #
     #######################
-    pass
+    layers = []
+    for i in range(len(sizes)-1):
+        layers.append(nn.Linear(sizes[i],sizes[i+1]))
+        if i<len(sizes)-2:
+            layers.append(activation())
+    layers.append(output_activation())
+    return nn.Sequential(*layers)
+    
 
 class DiagonalGaussianDistribution:
 
@@ -57,7 +65,8 @@ class DiagonalGaussianDistribution:
         #   YOUR CODE HERE    #
         #                     #
         #######################
-        pass
+
+        return self.mu + torch.randn(*(self.mu.shape))*torch.exp(self.log_std) 
 
     #================================(Given, ignore)==========================================#
     def log_prob(self, value):
@@ -85,9 +94,8 @@ class MLPGaussianActor(nn.Module):
         #   YOUR CODE HERE    #
         #                     #
         #######################
-        # self.log_std = 
-        # self.mu_net = 
-        pass 
+        self.log_std = torch.nn.Parameter(-0.5 + torch.zeros(act_dim))
+        self.mu_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation) #obs_dim,hidden_size
 
     #================================(Given, ignore)==========================================#
     def forward(self, obs, act=None):
@@ -119,7 +127,7 @@ if __name__ == '__main__':
 
     ActorCritic = partial(exercise1_2_auxiliary.ExerciseActorCritic, actor=MLPGaussianActor)
     
-    ppo(env_fn = lambda : gym.make('InvertedPendulum-v2'),
+    ppo(env_fn = lambda : gym.make('InvertedPendulumPyBulletEnv-v0'),#InvertedPendulum-v2
         actor_critic=ActorCritic,
         ac_kwargs=dict(hidden_sizes=(64,)),
         steps_per_epoch=4000, epochs=20, logger_kwargs=dict(output_dir=logdir))

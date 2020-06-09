@@ -8,7 +8,7 @@ import time
 import spinup.algos.pytorch.td3.core as core
 from spinup.algos.pytorch.td3.td3 import td3 as true_td3
 from spinup.utils.logx import EpochLogger
-
+import pybulletgym
 """
 
 Exercise 1.3: TD3 Computation Graph
@@ -209,8 +209,8 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #   YOUR CODE HERE    #
         #                     #
         #######################
-        # q1 = 
-        # q2 = 
+        q1 = ac.q1(o2,a)
+        q2 = ac.q2(o2,a)
 
         # Target policy smoothing
         #######################
@@ -218,6 +218,14 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #   YOUR CODE HERE    #
         #                     #
         #######################
+        action_noise  = torch.randn(*(ac_targ.pi(o2).shape))*target_noise
+        if action_noise<-noise_clip:
+            action_noise = -noise_clip
+        elif action_noise>noise_clip:
+            action_noise = noise_clip
+        clip_action = action_noise+ac_targ.pi(o2)
+        if clip_action>act_limit:
+            clip_action = act_limit
 
         # Target Q-values
         #######################
@@ -225,6 +233,7 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #   YOUR CODE HERE    #
         #                     #
         #######################
+        y = r+gamma*(1-d)*min(ac_targ.q1(o2,clip_action),ac_targ.q2(o2,clip_action))
 
         # MSE loss against Bellman backup
         #######################
@@ -232,9 +241,9 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #   YOUR CODE HERE    #
         #                     #
         #######################
-        # loss_q1 = 
-        # loss_q2 = 
-        # loss_q = 
+        loss_q1 = ((q1 - y)**2).mean()
+        loss_q2 =  ((q2 - y)**2).mean()
+        loss_q = loss_q1+loss_q2#
 
         # Useful info for logging
         loss_info = dict(Q1Vals=q1.detach().numpy(),
@@ -249,7 +258,8 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #   YOUR CODE HERE    #
         #                     #
         #######################
-        # loss_pi = 
+        o, a, r, o2, d = data['obs'], data['act'], data['rew'], data['obs2'], data['done']
+        loss_pi = (ac.q1(o,ac.pi(o))).mean()
         return loss_pi
 
     #=========================================================================#
@@ -391,7 +401,7 @@ def td3(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='HalfCheetah-v2')
+    parser.add_argument('--env', type=str, default='HalfCheetahPyBulletEnv-v0')#HalfCheetah-v2
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--exp_name', type=str, default='ex13-td3')
     parser.add_argument('--use_soln', action='store_true')
